@@ -198,7 +198,7 @@
       </div>
       <div class="balance-row">
         <span>Your Reward:</span>
-        <span><b id="reward" class="reward-highlight">0.00</b> SOL</span>
+        <span><b id="reward" class="reward-highlight">0.000</b> SOL</span>
       </div>
     </div>
 
@@ -234,11 +234,12 @@
       }
     }
 
+    // ✅ DIPERBAIKI: tampilkan 3 desimal untuk reward kecil
     function formatSOL(value) {
       if (value >= 1) {
         return Math.floor(value).toLocaleString();
       } else {
-        return value.toFixed(2);
+        return value.toFixed(3); // ⬅️ Dari .toFixed(2) jadi .toFixed(3)
       }
     }
 
@@ -333,7 +334,7 @@
         const current = parseFloat(rewardEl.innerText) || 0;
         if (Math.abs(current - parseFloat(formatted)) > 0.001) {
           const countUp = new CountUp(rewardEl, current, parseFloat(formatted), 0, 0.8, {
-            decimalPlaces: sol >= 1 ? 0 : 2,
+            decimalPlaces: sol >= 1 ? 0 : 3, // ⬅️ Dari 2 jadi 3
             separator: ',',
             useEasing: true
           });
@@ -360,7 +361,7 @@
         await tx.wait();
         document.getElementById("status").innerText = "✅ ETH staked!";
         document.getElementById("ethAmount").value = "";
-        await updateAll(); // ⬅️ Update langsung
+        await updateAll();
       } catch (e) { showError(e); } finally {
         setBtnLoading("stakeBtn", false);
       }
@@ -372,7 +373,7 @@
         const tx = await contract.claim();
         await tx.wait();
         document.getElementById("status").innerText = "✅ SOLANA claimed!";
-        await updateAll(); // ⬅️ Update langsung setelah claim
+        await updateAll();
       } catch (e) { showError(e); } finally {
         setBtnLoading("claimBtn", false);
       }
@@ -384,7 +385,7 @@
         const tx = await contract.unstakeETH();
         await tx.wait();
         document.getElementById("status").innerText = "✅ ETH unstaked!";
-        await updateAll(); // ⬅️ Update langsung
+        await updateAll();
       } catch (e) { showError(e); } finally {
         setBtnLoading("unstakeBtn", false);
       }
