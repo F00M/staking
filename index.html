@@ -172,7 +172,7 @@
 
   <script src="https://cdn.ethers.io/lib/ethers-5.6.9.umd.min.js"></script>
   <script>
-    // ✅ GANTI DENGAN ALAMAT KONTRAKMU
+    // ✅ GANTI DENGAN ALAMAT KONTRAKMU DI SINI!
     const STAKING_ADDR = "0xbb0eb8C1868cC952C27F639F0030D79b680A0B54";
     const SOLANA_ADDR = "0x5e60dD5b746f6E2a2e2777C8e09E59B589F0Cd71";
     const USDC_ADDR = "0x1c7D4B196cB0C7B01D743Fbc6116a902379c7238";
@@ -180,12 +180,26 @@
     let signer, contract;
 
     async function connectWallet() {
+      // Cek MetaMask
+      if (typeof window.ethereum === 'undefined') {
+        document.getElementById("status").innerText = "❌ MetaMask not installed";
+        return;
+      }
+
       try {
         const provider = new ethers.providers.Web3Provider(window.ethereum);
         await provider.send("eth_requestAccounts", []);
         signer = provider.getSigner();
         const account = await signer.getAddress();
 
+        // Cek jaringan: Sepolia = 11155111
+        const network = await provider.getNetwork();
+        if (network.chainId !== 11155111) {
+          document.getElementById("status").innerText = "❌ Please switch to Sepolia Testnet";
+          return;
+        }
+
+        // Load kontrak
         const contractABI = [
           "function stakeETH() payable",
           "function stakeUSDC(uint256)",
@@ -196,16 +210,21 @@
         ];
         contract = new ethers.Contract(STAKING_ADDR, contractABI, signer);
 
-        document.getElementById("account").innerText = account.substring(0,6)+"..."+account.substring(38);
+        // Tampilkan UI
+        document.getElementById("account").innerText = account.substring(0,6) + "..." + account.substring(38);
         document.getElementById("connectCard").style.display = "none";
         document.getElementById("mainUI").style.display = "block";
         document.getElementById("actionCards").style.display = "block";
-        document.getElementById("status").innerText = "✅ Connected";
+        document.getElementById("status").innerText = "✅ Connected to Sepolia";
+        
+        // Mulai update reward
         updateReward();
         setInterval(updateReward, 15000);
       } catch (e) {
-        document.getElementById("status").innerText = "❌ Connection failed";
         console.error(e);
+        let msg = e.message || e.reason || "Connection failed";
+        if (msg.includes("user rejected")) msg = "Connection rejected";
+        document.getElementById("status").innerText = "❌ " + msg;
       }
     }
 
@@ -251,7 +270,7 @@
         await tx.wait();
         showStatus("✅ Claimed!");
         updateReward();
-      } catch ( e ) { showError(e); }
+      } catch (e) { showError(e); }
     }
 
     async function unstakeETH() {
@@ -281,8 +300,9 @@
 
     function showError(e) {
       console.error(e);
-      const msg = e.reason || e.message || "Transaction failed";
-      document.getElementById("status").innerText = "⚠️ " + (msg.length > 50 ? msg.substring(0,50)+"..." : msg);
+      let msg = e.reason || e.message || "Transaction failed";
+      if (msg.length > 60) msg = msg.substring(0,60) + "...";
+      document.getElementById("status").innerText = "⚠️ " + msg;
     }
   </script>
 </body>
