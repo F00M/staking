@@ -92,7 +92,6 @@
       font-size: 16px;
       outline: none;
       transition: all 0.2s ease;
-      /* Hilangkan panah input number */
       appearance: none;
       -moz-appearance: textfield;
     }
@@ -215,7 +214,7 @@
   </div>
 
   <script src="https://cdn.jsdelivr.net/npm/ethers@6.12.0/dist/ethers.umd.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/countup.js@2.0.4/dist/countUp.min.js"></script>
+  <!-- ❌ CountUp dihapus karena mengganggu tampilan reward kecil -->
   <script>
     const STAKING_ADDR = "0x55E83EE156510ed81eAF5c23F14982cF0737fb11";
     const SOLANA_ADDR = "0x5e60dD5b746f6E2a2e2777C8e09E59B589F0Cd71";
@@ -234,12 +233,11 @@
       }
     }
 
-    // ✅ DIPERBAIKI: tampilkan 3 desimal untuk reward kecil
     function formatSOL(value) {
       if (value >= 1) {
         return Math.floor(value).toLocaleString();
       } else {
-        return value.toFixed(3); // ⬅️ Dari .toFixed(2) jadi .toFixed(3)
+        return value.toFixed(3);
       }
     }
 
@@ -324,23 +322,17 @@
       }
     }
 
+    // ✅ FIX AKHIR: Langsung tampilkan nilai tanpa CountUp
     async function updateReward() {
       try {
         const account = await signer.getAddress();
         const reward = await contract.pendingReward(account);
         const sol = parseFloat(ethers.formatUnits(reward, 9));
         const formatted = formatSOL(sol);
-        const rewardEl = document.getElementById("reward");
-        const current = parseFloat(rewardEl.innerText) || 0;
-        if (Math.abs(current - parseFloat(formatted)) > 0.001) {
-          const countUp = new CountUp(rewardEl, current, parseFloat(formatted), 0, 0.8, {
-            decimalPlaces: sol >= 1 ? 0 : 3, // ⬅️ Dari 2 jadi 3
-            separator: ',',
-            useEasing: true
-          });
-          if (!countUp.error) countUp.start();
-        }
-      } catch (e) { }
+        document.getElementById("reward").innerText = formatted;
+      } catch (e) {
+        document.getElementById("reward").innerText = "0.000";
+      }
     }
 
     async function updateAll() {
