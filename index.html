@@ -152,7 +152,6 @@
       font-weight: bold;
     }
 
-    /* Loading spinner */
     .loading-spinner {
       display: inline-block;
       width: 16px;
@@ -186,7 +185,7 @@
       </div>
       <div class="balance-row">
         <span>Staked ETH:</span>
-        <span id="stakedEth">—</span>
+        <span id="stakedEth">0.0000</span>
       </div>
       <div class="balance-row">
         <span>Your Reward:</span>
@@ -213,7 +212,6 @@
     const SOLANA_ADDR = "0x5e60dD5b746f6E2a2e2777C8e09E59B589F0Cd71";
 
     let signer, contract, ethBalance = 0;
-    let stakerData = { ethStaked: 0 };
 
     function setBtnLoading(id, loading, text = "") {
       const btn = document.getElementById(id);
@@ -224,6 +222,14 @@
         btn.disabled = false;
         btn.innerHTML = btn.dataset.original || btn.innerText;
         if (!btn.dataset.original) btn.dataset.original = btn.innerText;
+      }
+    }
+
+    function formatSOL(value) {
+      if (value >= 1) {
+        return Math.floor(value).toLocaleString();
+      } else {
+        return value.toFixed(2);
       }
     }
 
@@ -270,7 +276,7 @@
           "function unstakeETH()",
           "function claim()",
           "function pendingReward(address) view returns (uint256)",
-          "function stakers(address) view returns (uint256, uint256, uint256, uint256)"
+          "function stakers(address) view returns (uint256, uint256, uint256)"
         ];
         contract = new ethers.Contract(STAKING_ADDR, contractABI, signer);
 
@@ -279,14 +285,8 @@
         document.getElementById("actionUI").style.display = "block";
         document.getElementById("status").innerText = "✅ Connected";
 
-        updateBalances();
-        updateStakerData();
-        updateReward();
-        setInterval(() => {
-          updateBalances();
-          updateStakerData();
-          updateReward();
-        }, 60000);
+        updateAll();
+        setInterval(updateAll, 60000);
       } catch (e) {
         let msg = e.message || e.reason || "Connection failed";
         if (msg.includes("user rejected")) msg = "Connection rejected";
@@ -307,9 +307,11 @@
       try {
         const account = await signer.getAddress();
         const data = await contract.stakers(account);
-        stakerData = { ethStaked: parseFloat(ethers.formatEther(data[0])) };
-        document.getElementById("stakedEth").innerText = stakerData.ethStaked.toFixed(4) + " ETH";
-      } catch (e) { }
+        const ethStaked = data && data[0] ? parseFloat(ethers.formatEther(data[0])) : 0;
+        document.getElementById("stakedEth").innerText = ethStaked.toFixed(4) + " ETH";
+      } catch (e) {
+        document.getElementById("stakedEth").innerText = "0.0000 ETH";
+      }
     }
 
     async function updateReward() {
@@ -317,26 +319,24 @@
         const account = await signer.getAddress();
         const reward = await contract.pendingReward(account);
         const sol = parseFloat(ethers.formatUnits(reward, 9));
-
-        // Format: jika >= 1 → bulatkan ke integer, jika < 1 → 2 desimal
-        let formatted;
-        if (sol >= 1) {
-          formatted = Math.floor(sol).toLocaleString();
-        } else {
-          formatted = sol.toFixed(2);
-        }
-
-        // Animasi naik
+        const formatted = formatSOL(sol);
         const rewardEl = document.getElementById("reward");
-        const countUp = new CountUp(rewardEl, parseFloat(rewardEl.innerText), parseFloat(formatted), 0, 1.0, {
-          decimalPlaces: sol >= 1 ? 0 : 2,
-          separator: ',',
-          duration: 0.8,
-          useEasing: true
-        });
-        if (!countUp.error) countUp.start();
-
+        const current = parseFloat(rewardEl.innerText) || 0;
+        if (Math.abs(current - parseFloat(formatted)) > 0.001) {
+          const countUp = new CountUp(rewardEl, current, parseFloat(formatted), 0, 0.8, {
+            decimalPlaces: sol >= 1 ? 0 : 2,
+            separator: ',',
+            useEasing: true
+          });
+          if (!countUp.error) countUp.start();
+        }
       } catch (e) { }
+    }
+
+    async function updateAll() {
+      await updateBalances();
+      await updateStakerData();
+      await updateReward();
     }
 
     async function stakeETH() {
@@ -351,6 +351,7 @@
         await tx.wait();
         document.getElementById("status").innerText = "✅ ETH staked!";
         document.getElementById("ethAmount").value = "";
+        await updateAll(); // ⬅️ Update langsung
       } catch (e) { showError(e); } finally {
         setBtnLoading("stakeBtn", false);
       }
@@ -362,6 +363,7 @@
         const tx = await contract.claim();
         await tx.wait();
         document.getElementById("status").innerText = "✅ SOLANA claimed!";
+        await updateAll(); // ⬅️ Update langsung setelah claim
       } catch (e) { showError(e); } finally {
         setBtnLoading("claimBtn", false);
       }
@@ -373,6 +375,7 @@
         const tx = await contract.unstakeETH();
         await tx.wait();
         document.getElementById("status").innerText = "✅ ETH unstaked!";
+        await updateAll(); // ⬅️ Update langsung
       } catch (e) { showError(e); } finally {
         setBtnLoading("unstakeBtn", false);
       }
