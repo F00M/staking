@@ -14,22 +14,22 @@
       min-height: 100vh;
     }
     .container {
-      max-width: 560px;
+      max-width: 520px;
       margin: 0 auto;
     }
     header {
       text-align: center;
-      margin-bottom: 28px;
+      margin-bottom: 24px;
     }
     h1 {
       font-weight: 700;
-      font-size: 26px;
+      font-size: 24px;
       background: linear-gradient(90deg, #00ffaa, #5e81ff);
       -webkit-background-clip: text;
       -webkit-text-fill-color: transparent;
-      margin-bottom: 6px;
+      margin-bottom: 4px;
     }
-    .subtitle { color: #8a8ab8; font-size: 14px; }
+    .subtitle { color: #8a8ab8; font-size: 13px; }
 
     .card {
       background: rgba(20, 20, 30, 0.6);
@@ -39,40 +39,33 @@
       margin-bottom: 20px;
     }
 
-    .info-row {
+    .balance-row {
       display: flex;
       justify-content: space-between;
-      margin: 10px 0;
-      font-size: 15px;
-    }
-    .label { color: #8a8ab8; }
-    .value { font-weight: 500; }
-
-    .btn {
-      width: 100%;
-      padding: 14px;
-      border: none;
-      border-radius: 12px;
-      font-weight: 600;
-      font-size: 16px;
-      cursor: pointer;
+      font-size: 14px;
       margin: 8px 0;
+      color: #8a8ab8;
     }
-    .btn-connect {
-      background: linear-gradient(90deg, #5e81ff, #00ffaa);
-      color: #0f0f11;
+
+    .tabs {
+      display: flex;
+      margin-bottom: 20px;
+      border-bottom: 1px solid rgba(94,129,255,0.2);
     }
-    .btn-primary { background: #00ffaa; color: #0f0f11; }
-    .btn-outline {
-      background: transparent;
-      border: 1px solid #5e81ff;
-      color: #5e81ff;
+    .tab {
+      padding: 10px 20px;
+      cursor: pointer;
+      color: #8a8ab8;
+    }
+    .tab.active {
+      color: #00ffaa;
+      border-bottom: 2px solid #00ffaa;
     }
 
     .input-group {
       display: flex;
       gap: 10px;
-      margin-top: 12px;
+      margin: 16px 0;
     }
     input {
       flex: 1;
@@ -84,11 +77,24 @@
       font-size: 16px;
     }
 
+    .btn {
+      width: 100%;
+      padding: 14px;
+      border: none;
+      border-radius: 12px;
+      font-weight: 600;
+      font-size: 16px;
+      cursor: pointer;
+      margin: 10px 0;
+    }
+    .btn-primary { background: #00ffaa; color: #0f0f11; }
+    .btn-outline { background: transparent; border: 1px solid #5e81ff; color: #5e81ff; }
+
     .status {
       text-align: center;
       padding: 16px;
       color: #8a8ab8;
-      font-size: 14px;
+      font-size: 13px;
     }
   </style>
 </head>
@@ -96,83 +102,90 @@
   <div class="container">
     <header>
       <h1>SOLANA Staking</h1>
-      <p class="subtitle">Stake ETH or USDC on Sepolia → Earn SOLANA</p>
+      <p class="subtitle">Stake ETH or USDC → Earn SOLANA</p>
     </header>
 
     <div class="card" id="connectCard">
-      <button class="btn btn-connect" onclick="connectWallet()">Connect Wallet</button>
+      <button class="btn btn-primary" onclick="connectWallet()">Connect Wallet</button>
     </div>
 
     <div class="card" id="mainUI" style="display:none;">
-      <div class="info-row">
-        <span class="label">Account</span>
-        <span class="value" id="account">—</span>
+      <div class="balance-row">
+        <span>ETH Balance:</span>
+        <span id="ethBalance">—</span>
       </div>
-      <div class="info-row">
-        <span class="label">Reward</span>
-        <span class="value"><span id="reward">0.0000</span> SOL</span>
+      <div class="balance-row">
+        <span>USDC Balance:</span>
+        <span id="usdcBalance">—</span>
+      </div>
+      <div class="balance-row">
+        <span>Your Reward:</span>
+        <span><b id="reward">0</b> SOL</span>
+      </div>
+      <div class="balance-row">
+        <span>Est. Hourly:</span>
+        <span id="hourlyReward">0 SOL</span>
       </div>
     </div>
 
-    <div id="actionCards" style="display:none;">
-      <div class="card">
-        <button class="btn btn-primary" onclick="stakeETH(0.1)">Stake 0.1 ETH</button>
-        <button class="btn btn-outline" onclick="stakeETH(0.5)">Stake 0.5 ETH</button>
+    <div id="actionUI" style="display:none;">
+      <div class="tabs">
+        <div class="tab active" onclick="switchTab('eth')">ETH</div>
+        <div class="tab" onclick="switchTab('usdc')">USDC</div>
       </div>
 
-      <div class="card">
+      <div id="ethPanel">
         <div class="input-group">
-          <input type="number" id="usdcAmount" placeholder="USDC amount" min="1">
-          <button class="btn btn-primary" style="width:auto;padding:14px 16px;" onclick="stakeUSDC()">Stake USDC</button>
+          <input type="number" id="ethAmount" placeholder="Amount (ETH)" min="0.01" step="0.1">
+        </div>
+        <button class="btn btn-primary" onclick="stakeETH()">Stake ETH</button>
+        <button class="btn btn-outline" onclick="unstakeETH()">Unstake All ETH</button>
+      </div>
+
+      <div id="usdcPanel" style="display:none;">
+        <div class="input-group">
+          <input type="number" id="usdcAmount" placeholder="Amount (USDC)" min="1" step="100">
+        </div>
+        <button class="btn btn-primary" onclick="stakeUSDC()">Stake USDC</button>
+        <div class="input-group" style="margin-top:10px;">
+          <input type="number" id="unstakeUsdcAmount" placeholder="Unstake amount" min="1">
+          <button class="btn btn-outline" style="width:auto;padding:12px 16px;" onclick="unstakeUSDC()">Unstake</button>
         </div>
       </div>
 
-      <div class="card">
-        <button class="btn btn-primary" onclick="claim()">Claim SOLANA</button>
-        <button class="btn btn-outline" onclick="unstakeETH()">Unstake ETH</button>
-        <div class="input-group" style="margin-top:12px;">
-          <input type="number" id="unstakeUsdcAmount" placeholder="Unstake USDC">
-          <button class="btn btn-outline" style="width:auto;padding:14px 16px;" onclick="unstakeUSDC()">Unstake</button>
-        </div>
-      </div>
+      <button class="btn btn-primary" onclick="claim()">Claim SOLANA</button>
     </div>
 
     <div class="status" id="status">Connect wallet to begin</div>
   </div>
 
-  <!-- ✅ Ethers v6 - CDN yang 100% aman di Vercel & GitHub -->
   <script src="https://cdn.jsdelivr.net/npm/ethers@6.12.0/dist/ethers.umd.min.js"></script>
-
   <script>
-    // ✅ GANTI DENGAN ALAMAT KONTRAKMU
-    const STAKING_ADDR = "0xbb0eb8C1868cC952C27F639F0030D79b680A0B54";
+    const STAKING_ADDR = "0xYourStakingContractAddress";
     const SOLANA_ADDR = "0x5e60dD5b746f6E2a2e2777C8e09E59B589F0Cd71";
     const USDC_ADDR = "0x1c7D4B196cB0C7B01D743Fbc6116a902379c7238";
 
-    let signer, contract;
+    let signer, contract, ethBalance = 0, usdcBalance = 0;
+    let currentTab = 'eth';
 
     async function connectWallet() {
       if (typeof window.ethereum === 'undefined') {
         document.getElementById("status").innerText = "❌ MetaMask not detected";
         return;
       }
-    
+
       try {
-        // ✅ Ambil chainId langsung dari MetaMask
         const chainId = await window.ethereum.request({ method: 'eth_chainId' });
-        
-        if (chainId !== '0xaa36a7') { // 0xaa36a7 = 11155111 dalam hex
-          document.getElementById("status").innerText = "❌ Switch to Sepolia Testnet";
-          // ✅ Opsional: auto-switch ke Sepolia
+        if (chainId !== '0xaa36a7') {
+          document.getElementById("status").innerText = "❌ Switch to Sepolia";
           try {
             await window.ethereum.request({
               method: 'wallet_switchEthereumChain',
               params: [{ chainId: '0xaa36a7' }]
             });
-            location.reload(); // reload setelah switch
-          } catch (switchError) {
-            // Jika belum ditambahkan, tambahkan manual
-            if (switchError.code === 4902) {
+            location.reload();
+          } catch (e) {
+            if (e.code === 4902) {
               await window.ethereum.request({
                 method: 'wallet_addEthereumChain',
                 params: [{
@@ -188,29 +201,36 @@
           }
           return;
         }
-    
+
         const provider = new ethers.BrowserProvider(window.ethereum);
         await provider.send("eth_requestAccounts", []);
         signer = await provider.getSigner();
         const account = await signer.getAddress();
-    
+
         const contractABI = [
           "function stakeETH() payable",
           "function stakeUSDC(uint256)",
           "function unstakeETH()",
           "function unstakeUSDC(uint256)",
           "function claim()",
-          "function pendingReward(address) view returns (uint256)"
+          "function pendingReward(address) view returns (uint256)",
+          "function stakers(address) view returns (uint256, uint256, uint256, uint256)"
         ];
         contract = new ethers.Contract(STAKING_ADDR, contractABI, signer);
-    
-        document.getElementById("account").innerText = account.substring(0,6)+"..."+account.substring(38);
+
+        // Tampilkan UI
         document.getElementById("connectCard").style.display = "none";
         document.getElementById("mainUI").style.display = "block";
-        document.getElementById("actionCards").style.display = "block";
-        document.getElementById("status").innerText = "✅ Connected to Sepolia";
+        document.getElementById("actionUI").style.display = "block";
+        document.getElementById("status").innerText = "✅ Connected";
+
+        // Mulai update data live
+        updateBalances();
         updateReward();
-        setInterval(updateReward, 15000);
+        setInterval(() => {
+          updateBalances();
+          updateReward();
+        }, 10000);
       } catch (e) {
         let msg = e.message || e.reason || "Connection failed";
         if (msg.includes("user rejected")) msg = "Connection rejected";
@@ -218,80 +238,124 @@
       }
     }
 
+    async function updateBalances() {
+      try {
+        const account = await signer.getAddress();
+        const provider = signer.provider;
+        
+        // Saldo ETH
+        const ethBal = await provider.getBalance(account);
+        ethBalance = parseFloat(ethers.formatEther(ethBal));
+        document.getElementById("ethBalance").innerText = ethBalance.toFixed(4) + " ETH";
+
+        // Saldo USDC
+        const usdcContract = new ethers.Contract(USDC_ADDR, ["function balanceOf(address) view returns (uint256)"], provider);
+        const usdcBal = await usdcContract.balanceOf(account);
+        usdcBalance = parseFloat(ethers.formatUnits(usdcBal, 6));
+        document.getElementById("usdcBalance").innerText = Math.floor(usdcBalance) + " USDC";
+      } catch (e) { }
+    }
+
     async function updateReward() {
       try {
         const account = await signer.getAddress();
         const reward = await contract.pendingReward(account);
-        document.getElementById("reward").innerText = parseFloat(ethers.formatUnits(reward, 9)).toFixed(4);
-      } catch (e) { /* ignore */ }
+        const sol = parseFloat(ethers.formatUnits(reward, 9));
+        
+        // Tampilkan reward tanpa desimal
+        document.getElementById("reward").innerText = Math.floor(sol);
+        
+        // Hitung estimasi per jam
+        const stakerData = await contract.stakers(account);
+        const ethStaked = parseFloat(ethers.formatEther(stakerData[0]));
+        const usdcStaked = parseFloat(ethers.formatUnits(stakerData[1], 6));
+        const ethRewardPerHour = ethStaked * 2.85; // sesuai rewardRate
+        const usdcRewardPerHour = (usdcStaked / 2983) * 2.85;
+        const totalHourly = Math.floor(ethRewardPerHour + usdcRewardPerHour);
+        document.getElementById("hourlyReward").innerText = totalHourly + " SOL";
+      } catch (e) { }
     }
 
-    async function stakeETH(amount) {
-      showStatus("Staking ETH...");
+    function switchTab(tab) {
+      currentTab = tab;
+      document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+      if (tab === 'eth') {
+        document.querySelector('.tab:nth-child(1)').classList.add('active');
+        document.getElementById("ethPanel").style.display = "block";
+        document.getElementById("usdcPanel").style.display = "none";
+      } else {
+        document.querySelector('.tab:nth-child(2)').classList.add('active');
+        document.getElementById("ethPanel").style.display = "none";
+        document.getElementById("usdcPanel").style.display = "block";
+      }
+    }
+
+    // Fungsi interaksi (sama seperti sebelumnya)
+    async function stakeETH() {
+      const amount = document.getElementById("ethAmount").value;
+      if (!amount || parseFloat(amount) <= 0 || parseFloat(amount) > ethBalance) {
+        document.getElementById("status").innerText = "⚠️ Invalid amount or insufficient ETH";
+        return;
+      }
       try {
-        const tx = await contract.stakeETH({ value: ethers.parseEther(amount.toString()) });
+        const tx = await contract.stakeETH({ value: ethers.parseEther(amount) });
         await tx.wait();
-        showStatus("✅ Staked!");
-        updateReward();
+        document.getElementById("status").innerText = "✅ ETH staked!";
+        document.getElementById("ethAmount").value = "";
       } catch (e) { showError(e); }
     }
 
     async function stakeUSDC() {
       const amount = document.getElementById("usdcAmount").value;
-      if (!amount || amount <= 0) return showError("Enter valid USDC amount");
-      showStatus("Approving USDC...");
+      if (!amount || parseFloat(amount) <= 0 || parseFloat(amount) > usdcBalance) {
+        document.getElementById("status").innerText = "⚠️ Invalid amount or insufficient USDC";
+        return;
+      }
       try {
         const usdc = new ethers.Contract(USDC_ADDR, ["function approve(address,uint256)"], signer);
         const value = ethers.parseUnits(amount, 6);
         await (await usdc.approve(STAKING_ADDR, value)).wait();
-        showStatus("Staking USDC...");
         const tx = await contract.stakeUSDC(value);
         await tx.wait();
-        showStatus("✅ Staked!");
-        updateReward();
+        document.getElementById("status").innerText = "✅ USDC staked!";
+        document.getElementById("usdcAmount").value = "";
       } catch (e) { showError(e); }
     }
 
     async function claim() {
-      showStatus("Claiming SOLANA...");
       try {
         const tx = await contract.claim();
         await tx.wait();
-        showStatus("✅ Claimed!");
-        updateReward();
+        document.getElementById("status").innerText = "✅ SOLANA claimed!";
       } catch (e) { showError(e); }
     }
 
     async function unstakeETH() {
-      showStatus("Unstaking ETH...");
       try {
         const tx = await contract.unstakeETH();
         await tx.wait();
-        showStatus("✅ Unstaked!");
+        document.getElementById("status").innerText = "✅ ETH unstaked!";
       } catch (e) { showError(e); }
     }
 
     async function unstakeUSDC() {
       const amount = document.getElementById("unstakeUsdcAmount").value;
-      if (!amount || amount <= 0) return showError("Enter valid amount");
-      showStatus("Unstaking USDC...");
+      if (!amount || parseFloat(amount) <= 0) {
+        document.getElementById("status").innerText = "⚠️ Enter valid amount";
+        return;
+      }
       try {
         const value = ethers.parseUnits(amount, 6);
         const tx = await contract.unstakeUSDC(value);
         await tx.wait();
-        showStatus("✅ Unstaked!");
+        document.getElementById("status").innerText = "✅ USDC unstaked!";
+        document.getElementById("unstakeUsdcAmount").value = "";
       } catch (e) { showError(e); }
     }
 
-    function showStatus(msg) {
-      document.getElementById("status").innerText = msg;
-    }
-
     function showError(e) {
-      console.error(e);
       let msg = e.reason || e.message || "Transaction failed";
-      if (msg.length > 60) msg = msg.substring(0,60) + "...";
-      document.getElementById("status").innerText = "⚠️ " + msg;
+      document.getElementById("status").innerText = "⚠️ " + (msg.length > 60 ? msg.substring(0,60)+"..." : msg);
     }
   </script>
 </body>
