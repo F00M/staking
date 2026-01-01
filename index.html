@@ -24,7 +24,7 @@
     h1 {
       font-weight: 700;
       font-size: 24px;
-      background: linear-gradient(90deg, #00ffaa, #5e81ff);
+      background: linear-gradient(90deg, #6a5af9, #00f5d4);
       -webkit-background-clip: text;
       -webkit-text-fill-color: transparent;
       margin-bottom: 4px;
@@ -32,11 +32,12 @@
     .subtitle { color: #8a8ab8; font-size: 13px; }
 
     .card {
-      background: rgba(20, 20, 30, 0.6);
-      border: 1px solid rgba(94, 129, 255, 0.2);
+      background: rgba(20, 20, 30, 0.7);
+      border: 1px solid rgba(106, 90, 249, 0.2);
       border-radius: 16px;
       padding: 20px;
       margin-bottom: 20px;
+      backdrop-filter: blur(4px);
     }
 
     .balance-row {
@@ -56,10 +57,14 @@
       flex: 1;
       padding: 14px;
       background: rgba(10, 10, 20, 0.7);
-      border: 1px solid rgba(94, 129, 255, 0.3);
+      border: 1px solid rgba(106, 90, 249, 0.3);
       border-radius: 8px;
       color: #e0e0ff;
       font-size: 16px;
+      outline: none;
+    }
+    input:focus {
+      border-color: #6a5af9;
     }
 
     .btn {
@@ -71,15 +76,41 @@
       font-size: 16px;
       cursor: pointer;
       margin: 10px 0;
+      transition: all 0.2s ease;
     }
-    .btn-primary { background: #00ffaa; color: #0f0f11; }
-    .btn-outline { background: transparent; border: 1px solid #5e81ff; color: #5e81ff; }
+    .btn-primary {
+      background: linear-gradient(90deg, #6a5af9, #8850ff);
+      color: white;
+    }
+    .btn-primary:hover {
+      opacity: 0.9;
+      transform: translateY(-1px);
+    }
+    .btn-outline {
+      background: transparent;
+      border: 1px solid #6a5af9;
+      color: #6a5af9;
+    }
+    .btn-outline:hover {
+      background: rgba(106, 90, 249, 0.1);
+    }
 
     .status {
       text-align: center;
       padding: 16px;
       color: #8a8ab8;
       font-size: 13px;
+      min-height: 20px;
+    }
+
+    @keyframes pulse {
+      0% { box-shadow: 0 0 0 0 rgba(106, 90, 249, 0.4); }
+      70% { box-shadow: 0 0 0 8px rgba(106, 90, 249, 0); }
+      100% { box-shadow: 0 0 0 0 rgba(106, 90, 249, 0); }
+    }
+    .reward-highlight {
+      animation: pulse 2s infinite;
+      color: #00f5d4;
     }
   </style>
 </head>
@@ -105,24 +136,17 @@
       </div>
       <div class="balance-row">
         <span>Your Reward:</span>
-        <span><b id="reward">0</b> SOL</span>
+        <span><b id="reward" class="reward-highlight">0.000000</b> SOL</span>
       </div>
-      <!-- ❌ Sembunyikan estimasi per jam (karena rewardRate terlalu tinggi) -->
-      <!--
-      <div class="balance-row">
-        <span>Est. Hourly:</span>
-        <span id="hourlyReward">—</span>
-      </div>
-      -->
     </div>
 
     <div id="actionUI" style="display:none;">
       <div class="input-group">
         <input type="number" id="ethAmount" placeholder="Amount (ETH)" min="0.01" step="0.1">
       </div>
-      <button class="btn btn-primary" onclick="stakeETH()">Stake ETH</button>
-      <button class="btn btn-outline" onclick="unstakeETH()">Unstake All ETH</button>
-      <button class="btn btn-primary" style="margin-top:10px;" onclick="claim()">Claim SOLANA</button>
+      <button class="btn btn-primary" id="stakeBtn" onclick="stakeETH()">Stake ETH</button>
+      <button class="btn btn-outline" id="unstakeBtn" onclick="unstakeETH()">Unstake All ETH</button>
+      <button class="btn btn-primary" id="claimBtn" style="margin-top:10px;" onclick="claim()">Claim SOLANA</button>
     </div>
 
     <div class="status" id="status">Connect wallet to begin</div>
@@ -130,12 +154,30 @@
 
   <script src="https://cdn.jsdelivr.net/npm/ethers@6.12.0/dist/ethers.umd.min.js"></script>
   <script>
-    // ✅ GANTI HANYA DI SINI — pakai alamat kontrak LAMA kamu
     const STAKING_ADDR = "0x55E83EE156510ed81eAF5c23F14982cF0737fb11";
     const SOLANA_ADDR = "0x5e60dD5b746f6E2a2e2777C8e09E59B589F0Cd71";
 
     let signer, contract, ethBalance = 0;
     let stakerData = { ethStaked: 0 };
+
+    // ——— UI Helpers ———
+    function setBtnLoading(id, loading, text = "") {
+      const btn = document.getElementById(id);
+      if (loading) {
+        btn.disabled = true;
+        btn.innerText = text || "⏳ Processing...";
+      } else {
+        btn.disabled = false;
+        btn.innerText = btn.dataset.original || btn.innerText;
+        if (!btn.dataset.original) btn.dataset.original = btn.innerText;
+      }
+    }
+
+    function formatSOL(value) {
+      if (value === 0) return "0.000000";
+      if (value < 0.000001) return "~0.000001";
+      return value.toFixed(6).replace(/\.?0+$/, '');
+    }
 
     async function connectWallet() {
       if (typeof window.ethereum === 'undefined') {
@@ -174,7 +216,6 @@
         const provider = new ethers.BrowserProvider(window.ethereum);
         await provider.send("eth_requestAccounts", []);
         signer = await provider.getSigner();
-        const account = await signer.getAddress();
 
         const contractABI = [
           "function stakeETH() payable",
@@ -190,7 +231,6 @@
         document.getElementById("actionUI").style.display = "block";
         document.getElementById("status").innerText = "✅ Connected";
 
-        // Update data
         updateBalances();
         updateStakerData();
         updateReward();
@@ -229,8 +269,7 @@
         const account = await signer.getAddress();
         const reward = await contract.pendingReward(account);
         const sol = parseFloat(ethers.formatUnits(reward, 9));
-        // Tampilkan reward yang benar-benar ada
-        document.getElementById("reward").innerText = Math.floor(sol);
+        document.getElementById("reward").innerText = formatSOL(sol);
       } catch (e) { }
     }
 
@@ -241,32 +280,44 @@
         return;
       }
       try {
+        setBtnLoading("stakeBtn", true);
         const tx = await contract.stakeETH({ value: ethers.parseEther(amount) });
         await tx.wait();
         document.getElementById("status").innerText = "✅ ETH staked!";
         document.getElementById("ethAmount").value = "";
-      } catch (e) { showError(e); }
+      } catch (e) { showError(e); } finally {
+        setBtnLoading("stakeBtn", false);
+      }
     }
 
     async function claim() {
       try {
+        setBtnLoading("claimBtn", true, "⏳ Claiming...");
         const tx = await contract.claim();
         await tx.wait();
         document.getElementById("status").innerText = "✅ SOLANA claimed!";
-      } catch (e) { showError(e); }
+      } catch (e) { showError(e); } finally {
+        setBtnLoading("claimBtn", false);
+      }
     }
 
     async function unstakeETH() {
       try {
+        setBtnLoading("unstakeBtn", true, "⏳ Unstaking...");
         const tx = await contract.unstakeETH();
         await tx.wait();
         document.getElementById("status").innerText = "✅ ETH unstaked!";
-      } catch (e) { showError(e); }
+      } catch (e) { showError(e); } finally {
+        setBtnLoading("unstakeBtn", false);
+      }
     }
 
     function showError(e) {
       let msg = e.reason || e.message || "Transaction failed";
       document.getElementById("status").innerText = "⚠️ " + (msg.length > 60 ? msg.substring(0,60)+"..." : msg);
+      setBtnLoading("stakeBtn", false);
+      setBtnLoading("claimBtn", false);
+      setBtnLoading("unstakeBtn", false);
     }
   </script>
 </body>
