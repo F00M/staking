@@ -176,13 +176,14 @@
 
   <script src="https://cdn.jsdelivr.net/npm/ethers@6.12.0/dist/ethers.umd.min.js"></script>
   <script>
-    const STAKING_ADDR = "0xYourStakingContractAddress";
+    const STAKING_ADDR = "0xbb0eb8C1868cC952C27F639F0030D79b680A0B54";
     const SOLANA_ADDR = "0x5e60dD5b746f6E2a2e2777C8e09E59B589F0Cd71";
     const USDC_ADDR = "0x1c7D4B196cB0C7B01D743Fbc6116a902379c7238";
 
     let signer, contract, ethBalance = 0, usdcBalance = 0;
     let currentTab = 'eth';
     let stakerData = { ethStaked: 0, usdcStaked: 0 };
+    let usdcAllowance = 0;
 
     async function connectWallet() {
       if (typeof window.ethereum === 'undefined') {
@@ -271,6 +272,10 @@
         const usdcBal = await usdcContract.balanceOf(account);
         usdcBalance = parseFloat(ethers.formatUnits(usdcBal, 6));
         document.getElementById("usdcBalance").innerText = Math.floor(usdcBalance) + " USDC";
+
+        // Allowance USDC ke kontrak
+        const allowance = await usdcContract.allowance(account, STAKING_ADDR);
+        usdcAllowance = parseFloat(ethers.formatUnits(allowance, 6));
       } catch (e) { }
     }
 
@@ -335,14 +340,28 @@
 
     async function stakeUSDC() {
       const amount = document.getElementById("usdcAmount").value;
-      if (!amount || parseFloat(amount) <= 0 || parseFloat(amount) > usdcBalance) {
-        document.getElementById("status").innerText = "⚠️ Invalid amount or insufficient USDC";
+      if (!amount || parseFloat(amount) <= 0) {
+        document.getElementById("status").innerText = "⚠️ Enter valid amount";
         return;
       }
+      if (parseFloat(amount) > usdcBalance) {
+        document.getElementById("status").innerText = "⚠️ Insufficient USDC";
+        return;
+      }
+
       try {
         const usdc = new ethers.Contract(USDC_ADDR, ["function approve(address,uint256)"], signer);
         const value = ethers.parseUnits(amount, 6);
-        await (await usdc.approve(STAKING_ADDR, value)).wait();
+
+        // Cek approval
+        if (usdcAllowance < parseFloat(amount)) {
+          document.getElementById("status").innerText = "⏳ Approving USDC...";
+          const approveTx = await usdc.approve(STAKING_ADDR, value);
+          await approveTx.wait();
+          document.getElementById("status").innerText = "✅ Approved!";
+        }
+
+        document.getElementById("status").innerText = "⏳ Staking USDC...";
         const tx = await contract.stakeUSDC(value);
         await tx.wait();
         document.getElementById("status").innerText = "✅ USDC staked!";
