@@ -156,19 +156,44 @@
         document.getElementById("status").innerText = "❌ MetaMask not detected";
         return;
       }
-
+    
       try {
+        // ✅ Ambil chainId langsung dari MetaMask
+        const chainId = await window.ethereum.request({ method: 'eth_chainId' });
+        
+        if (chainId !== '0xaa36a7') { // 0xaa36a7 = 11155111 dalam hex
+          document.getElementById("status").innerText = "❌ Switch to Sepolia Testnet";
+          // ✅ Opsional: auto-switch ke Sepolia
+          try {
+            await window.ethereum.request({
+              method: 'wallet_switchEthereumChain',
+              params: [{ chainId: '0xaa36a7' }]
+            });
+            location.reload(); // reload setelah switch
+          } catch (switchError) {
+            // Jika belum ditambahkan, tambahkan manual
+            if (switchError.code === 4902) {
+              await window.ethereum.request({
+                method: 'wallet_addEthereumChain',
+                params: [{
+                  chainId: '0xaa36a7',
+                  chainName: 'Sepolia Testnet',
+                  nativeCurrency: { name: 'SepoliaETH', symbol: 'ETH', decimals: 18 },
+                  rpcUrls: ['https://rpc.sepolia.org'],
+                  blockExplorerUrls: ['https://sepolia.etherscan.io']
+                }]
+              });
+              location.reload();
+            }
+          }
+          return;
+        }
+    
         const provider = new ethers.BrowserProvider(window.ethereum);
         await provider.send("eth_requestAccounts", []);
         signer = await provider.getSigner();
         const account = await signer.getAddress();
-
-        const network = await provider.getNetwork();
-        if (network.chainId !== 11155111) {
-          document.getElementById("status").innerText = "❌ Switch to Sepolia";
-          return;
-        }
-
+    
         const contractABI = [
           "function stakeETH() payable",
           "function stakeUSDC(uint256)",
@@ -178,17 +203,17 @@
           "function pendingReward(address) view returns (uint256)"
         ];
         contract = new ethers.Contract(STAKING_ADDR, contractABI, signer);
-
+    
         document.getElementById("account").innerText = account.substring(0,6)+"..."+account.substring(38);
         document.getElementById("connectCard").style.display = "none";
         document.getElementById("mainUI").style.display = "block";
         document.getElementById("actionCards").style.display = "block";
-        document.getElementById("status").innerText = "✅ Connected";
+        document.getElementById("status").innerText = "✅ Connected to Sepolia";
         updateReward();
         setInterval(updateReward, 15000);
       } catch (e) {
-        let msg = e.message || e.reason || "Failed";
-        if (msg.includes("user rejected")) msg = "Rejected by user";
+        let msg = e.message || e.reason || "Connection failed";
+        if (msg.includes("user rejected")) msg = "Connection rejected";
         document.getElementById("status").innerText = "❌ " + msg;
       }
     }
