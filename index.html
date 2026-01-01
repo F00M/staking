@@ -140,11 +140,11 @@
     <div class="status" id="status">Connect wallet to begin</div>
   </div>
 
-  <!-- ✅ Ethers.js UMD — 100% kompatibel dengan GitHub Pages -->
-  <script src="https://unpkg.com/ethers@5.7.2/dist/browser/ethers.umd.min.js"></script>
+  <!-- ✅ Ethers v6 - CDN yang 100% aman di Vercel & GitHub -->
+  <script src="https://cdn.jsdelivr.net/npm/ethers@6.12.0/dist/ethers.umd.min.js"></script>
 
   <script>
-    // ✅ GANTI DENGAN ALAMAT KONTRAKMU DI SINI!
+    // ✅ GANTI DENGAN ALAMAT KONTRAKMU
     const STAKING_ADDR = "0xbb0eb8C1868cC952C27F639F0030D79b680A0B54";
     const SOLANA_ADDR = "0x5e60dD5b746f6E2a2e2777C8e09E59B589F0Cd71";
     const USDC_ADDR = "0x1c7D4B196cB0C7B01D743Fbc6116a902379c7238";
@@ -158,14 +158,14 @@
       }
 
       try {
-        const provider = new ethers.providers.Web3Provider(window.ethereum);
+        const provider = new ethers.BrowserProvider(window.ethereum);
         await provider.send("eth_requestAccounts", []);
-        signer = provider.getSigner();
+        signer = await provider.getSigner();
         const account = await signer.getAddress();
 
         const network = await provider.getNetwork();
         if (network.chainId !== 11155111) {
-          document.getElementById("status").innerText = "❌ Switch to Sepolia Testnet";
+          document.getElementById("status").innerText = "❌ Switch to Sepolia";
           return;
         }
 
@@ -179,16 +179,16 @@
         ];
         contract = new ethers.Contract(STAKING_ADDR, contractABI, signer);
 
-        document.getElementById("account").innerText = account.substring(0,6) + "..." + account.substring(38);
+        document.getElementById("account").innerText = account.substring(0,6)+"..."+account.substring(38);
         document.getElementById("connectCard").style.display = "none";
         document.getElementById("mainUI").style.display = "block";
         document.getElementById("actionCards").style.display = "block";
-        document.getElementById("status").innerText = "✅ Connected to Sepolia";
+        document.getElementById("status").innerText = "✅ Connected";
         updateReward();
         setInterval(updateReward, 15000);
       } catch (e) {
-        let msg = e.message || e.reason || "Connection failed";
-        if (msg.includes("user rejected")) msg = "Connection rejected";
+        let msg = e.message || e.reason || "Failed";
+        if (msg.includes("user rejected")) msg = "Rejected by user";
         document.getElementById("status").innerText = "❌ " + msg;
       }
     }
@@ -197,14 +197,14 @@
       try {
         const account = await signer.getAddress();
         const reward = await contract.pendingReward(account);
-        document.getElementById("reward").innerText = parseFloat(ethers.utils.formatUnits(reward, 9)).toFixed(4);
+        document.getElementById("reward").innerText = parseFloat(ethers.formatUnits(reward, 9)).toFixed(4);
       } catch (e) { /* ignore */ }
     }
 
     async function stakeETH(amount) {
       showStatus("Staking ETH...");
       try {
-        const tx = await contract.stakeETH({ value: ethers.utils.parseEther(amount.toString()) });
+        const tx = await contract.stakeETH({ value: ethers.parseEther(amount.toString()) });
         await tx.wait();
         showStatus("✅ Staked!");
         updateReward();
@@ -217,7 +217,7 @@
       showStatus("Approving USDC...");
       try {
         const usdc = new ethers.Contract(USDC_ADDR, ["function approve(address,uint256)"], signer);
-        const value = ethers.utils.parseUnits(amount, 6);
+        const value = ethers.parseUnits(amount, 6);
         await (await usdc.approve(STAKING_ADDR, value)).wait();
         showStatus("Staking USDC...");
         const tx = await contract.stakeUSDC(value);
@@ -251,7 +251,7 @@
       if (!amount || amount <= 0) return showError("Enter valid amount");
       showStatus("Unstaking USDC...");
       try {
-        const value = ethers.utils.parseUnits(amount, 6);
+        const value = ethers.parseUnits(amount, 6);
         const tx = await contract.unstakeUSDC(value);
         await tx.wait();
         showStatus("✅ Unstaked!");
@@ -263,6 +263,7 @@
     }
 
     function showError(e) {
+      console.error(e);
       let msg = e.reason || e.message || "Transaction failed";
       if (msg.length > 60) msg = msg.substring(0,60) + "...";
       document.getElementById("status").innerText = "⚠️ " + msg;
