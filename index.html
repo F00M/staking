@@ -1,0 +1,286 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>SOLANA Staking</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;500;700&display=swap" rel="stylesheet">
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      background: #0f0f11;
+      color: #e0e0ff;
+      font-family: 'Inter', system-ui, sans-serif;
+      padding: 24px;
+      min-height: 100vh;
+    }
+    .container {
+      max-width: 520px;
+      margin: 0 auto;
+    }
+    header {
+      text-align: center;
+      margin-bottom: 32px;
+    }
+    h1 {
+      font-weight: 700;
+      font-size: 28px;
+      background: linear-gradient(90deg, #00ffaa, #5e81ff);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      margin-bottom: 8px;
+    }
+    .subtitle {
+      color: #8a8ab8;
+      font-size: 15px;
+      font-weight: 300;
+    }
+
+    .card {
+      background: rgba(20, 20, 30, 0.6);
+      border: 1px solid rgba(94, 129, 255, 0.2);
+      border-radius: 16px;
+      padding: 24px;
+      margin-bottom: 20px;
+      backdrop-filter: blur(10px);
+    }
+
+    .info-row {
+      display: flex;
+      justify-content: space-between;
+      margin: 12px 0;
+    }
+    .info-label { color: #8a8ab8; font-size: 14px; }
+    .info-value { font-weight: 500; font-size: 16px; }
+
+    .btn {
+      width: 100%;
+      padding: 14px;
+      border: none;
+      border-radius: 12px;
+      font-weight: 600;
+      font-size: 16px;
+      cursor: pointer;
+      margin-top: 12px;
+      transition: all 0.2s;
+    }
+    .btn-primary {
+      background: linear-gradient(90deg, #00ffaa, #5e81ff);
+      color: #0f0f11;
+    }
+    .btn-primary:hover {
+      opacity: 0.9;
+      transform: translateY(-2px);
+    }
+    .btn-outline {
+      background: transparent;
+      border: 1px solid #5e81ff;
+      color: #5e81ff;
+    }
+
+    .input-group {
+      display: flex;
+      gap: 10px;
+      margin-top: 12px;
+    }
+    .input-group input {
+      flex: 1;
+      padding: 14px;
+      background: rgba(10, 10, 20, 0.7);
+      border: 1px solid rgba(94, 129, 255, 0.3);
+      border-radius: 8px;
+      color: #e0e0ff;
+      font-size: 16px;
+    }
+    .input-group input::placeholder {
+      color: #5a5a7a;
+    }
+
+    .status {
+      text-align: center;
+      padding: 16px;
+      color: #8a8ab8;
+      font-size: 14px;
+    }
+
+    footer {
+      text-align: center;
+      margin-top: 40px;
+      color: #5a5a7a;
+      font-size: 13px;
+    }
+
+    @media (max-width: 500px) {
+      body { padding: 16px; }
+      h1 { font-size: 24px; }
+      .card { padding: 20px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <h1>SOLANA Staking</h1>
+      <p class="subtitle">Stake ETH or USDC on Sepolia → Earn SOLANA</p>
+    </header>
+
+    <div class="card">
+      <div class="info-row">
+        <span class="info-label">Connected</span>
+        <span class="info-value" id="account">—</span>
+      </div>
+      <div class="info-row">
+        <span class="info-label">Your Reward</span>
+        <span class="info-value"><span id="reward">0.0000</span> SOL</span>
+      </div>
+      <div class="info-row">
+        <span class="info-label">APR</span>
+        <span class="info-value">~300% (realistic)</span>
+      </div>
+    </div>
+
+    <div class="card">
+      <h3 style="margin-bottom:16px; font-weight:600;">Stake ETH</h3>
+      <button class="btn btn-primary" onclick="stakeETH(0.1)">Stake 0.1 ETH</button>
+      <button class="btn btn-outline" onclick="stakeETH(0.5)">Stake 0.5 ETH</button>
+    </div>
+
+    <div class="card">
+      <h3 style="margin-bottom:16px; font-weight:600;">Stake USDC</h3>
+      <div class="input-group">
+        <input type="number" id="usdcAmount" placeholder="Amount (USDC)" min="1" step="100">
+        <button class="btn btn-primary" style="width:auto; padding:14px 20px;" onclick="stakeUSDC()">Stake</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <h3 style="margin-bottom:16px; font-weight:600;">Manage</h3>
+      <button class="btn btn-primary" onclick="claim()">Claim SOLANA</button>
+      <button class="btn btn-outline" onclick="unstakeETH()">Unstake All ETH</button>
+      
+      <div class="input-group" style="margin-top:16px;">
+        <input type="number" id="unstakeUsdcAmount" placeholder="Unstake USDC" min="1">
+        <button class="btn btn-outline" style="width:auto; padding:14px 20px;" onclick="unstakeUSDC()">Unstake</button>
+      </div>
+    </div>
+
+    <div class="status" id="status">Connect wallet to begin</div>
+
+    <footer>
+      <p>Ethereum Sepolia Testnet • Rewards in SOLANA</p>
+    </footer>
+  </div>
+
+  <script src="https://cdn.ethers.io/lib/ethers-5.6.9.umd.min.js"></script>
+  <script>
+    // ✅ GANTI DENGAN ALAMAT KONTRAKMU SETELAH DEPLOY
+    const STAKING_ADDR = "0xbb0eb8C1868cC952C27F639F0030D79b680A0B54";
+    const SOLANA_ADDR = "0x5e60dD5b746f6E2a2e2777C8e09E59B589F0Cd71";
+    const USDC_ADDR = "0x1c7D4B196cB0C7B01D743Fbc6116a902379c7238";
+
+    const provider = new ethers.providers.Web3Provider(window.ethereum);
+    let signer, contract;
+
+    const stakingAbi = [
+      "function stakeETH() payable",
+      "function stakeUSDC(uint256)",
+      "function unstakeETH()",
+      "function unstakeUSDC(uint256)",
+      "function claim()",
+      "function pendingReward(address) view returns (uint256)"
+    ];
+
+    async function init() {
+      try {
+        await provider.send("eth_requestAccounts", []);
+        signer = provider.getSigner();
+        contract = new ethers.Contract(STAKING_ADDR, stakingAbi, signer);
+        
+        const account = await signer.getAddress();
+        document.getElementById("account").innerText = account.substring(0,6) + "..." + account.substring(38);
+        updateReward();
+        setInterval(updateReward, 15000);
+        document.getElementById("status").innerText = "Ready";
+      } catch (e) {
+        document.getElementById("status").innerText = "Connect wallet to begin";
+      }
+    }
+
+    async function updateReward() {
+      try {
+        const account = await signer.getAddress();
+        const reward = await contract.pendingReward(account);
+        document.getElementById("reward").innerText = parseFloat(ethers.utils.formatUnits(reward, 9)).toFixed(4);
+      } catch (e) { /* ignore */ }
+    }
+
+    async function stakeETH(amount) {
+      showStatus("Staking ETH...");
+      try {
+        const tx = await contract.stakeETH({ value: ethers.utils.parseEther(amount.toString()) });
+        await tx.wait();
+        showStatus("✅ Staked!");
+        updateReward();
+      } catch (e) { showError(e); }
+    }
+
+    async function stakeUSDC() {
+      const amount = document.getElementById("usdcAmount").value;
+      if (!amount || amount <= 0) return showError("Enter valid amount");
+      showStatus("Approving USDC...");
+      try {
+        const usdc = new ethers.Contract(USDC_ADDR, ["function approve(address,uint256)"], signer);
+        const value = ethers.utils.parseUnits(amount, 6);
+        await (await usdc.approve(STAKING_ADDR, value)).wait();
+        showStatus("Staking USDC...");
+        const tx = await contract.stakeUSDC(value);
+        await tx.wait();
+        showStatus("✅ Staked!");
+        updateReward();
+      } catch (e) { showError(e); }
+    }
+
+    async function claim() {
+      showStatus("Claiming SOLANA...");
+      try {
+        const tx = await contract.claim();
+        await tx.wait();
+        showStatus("✅ Claimed!");
+        updateReward();
+      } catch (e) { showError(e); }
+    }
+
+    async function unstakeETH() {
+      showStatus("Unstaking ETH...");
+      try {
+        const tx = await contract.unstakeETH();
+        await tx.wait();
+        showStatus("✅ Unstaked!");
+      } catch (e) { showError(e); }
+    }
+
+    async function unstakeUSDC() {
+      const amount = document.getElementById("unstakeUsdcAmount").value;
+      if (!amount || amount <= 0) return showError("Enter valid amount");
+      showStatus("Unstaking USDC...");
+      try {
+        const value = ethers.utils.parseUnits(amount, 6);
+        const tx = await contract.unstakeUSDC(value);
+        await tx.wait();
+        showStatus("✅ Unstaked!");
+      } catch (e) { showError(e); }
+    }
+
+    function showStatus(msg) {
+      document.getElementById("status").innerText = msg;
+    }
+
+    function showError(e) {
+      console.error(e);
+      document.getElementById("status").innerText = "⚠️ " + (e.reason || e.message || "Transaction failed");
+    }
+
+    window.onload = init;
+  </script>
+</body>
+</html>
