@@ -56,6 +56,9 @@
       padding: 10px 20px;
       cursor: pointer;
       color: #8a8ab8;
+      display: flex;
+      align-items: center;
+      gap: 8px;
     }
     .tab.active {
       color: #00ffaa;
@@ -119,6 +122,14 @@
         <span id="usdcBalance">—</span>
       </div>
       <div class="balance-row">
+        <span>Staked ETH:</span>
+        <span id="stakedEth">—</span>
+      </div>
+      <div class="balance-row">
+        <span>Staked USDC:</span>
+        <span id="stakedUsdc">—</span>
+      </div>
+      <div class="balance-row">
         <span>Your Reward:</span>
         <span><b id="reward">0</b> SOL</span>
       </div>
@@ -130,8 +141,12 @@
 
     <div id="actionUI" style="display:none;">
       <div class="tabs">
-        <div class="tab active" onclick="switchTab('eth')">ETH</div>
-        <div class="tab" onclick="switchTab('usdc')">USDC</div>
+        <div class="tab active" onclick="switchTab('eth')">
+          <span>🟡</span> ETH
+        </div>
+        <div class="tab" onclick="switchTab('usdc')">
+          <span>💵</span> USDC
+        </div>
       </div>
 
       <div id="ethPanel">
@@ -167,6 +182,7 @@
 
     let signer, contract, ethBalance = 0, usdcBalance = 0;
     let currentTab = 'eth';
+    let stakerData = { ethStaked: 0, usdcStaked: 0 };
 
     async function connectWallet() {
       if (typeof window.ethereum === 'undefined') {
@@ -226,11 +242,13 @@
 
         // Mulai update data live
         updateBalances();
+        updateStakerData();
         updateReward();
         setInterval(() => {
           updateBalances();
+          updateStakerData();
           updateReward();
-        }, 10000);
+        }, 60000); // Update tiap 1 menit
       } catch (e) {
         let msg = e.message || e.reason || "Connection failed";
         if (msg.includes("user rejected")) msg = "Connection rejected";
@@ -256,21 +274,31 @@
       } catch (e) { }
     }
 
+    async function updateStakerData() {
+      try {
+        const account = await signer.getAddress();
+        const data = await contract.stakers(account);
+        stakerData = {
+          ethStaked: parseFloat(ethers.formatEther(data[0])),
+          usdcStaked: parseFloat(ethers.formatUnits(data[1], 6))
+        };
+        document.getElementById("stakedEth").innerText = stakerData.ethStaked.toFixed(4) + " ETH";
+        document.getElementById("stakedUsdc").innerText = Math.floor(stakerData.usdcStaked) + " USDC";
+      } catch (e) { }
+    }
+
     async function updateReward() {
       try {
         const account = await signer.getAddress();
         const reward = await contract.pendingReward(account);
         const sol = parseFloat(ethers.formatUnits(reward, 9));
-        
+
         // Tampilkan reward tanpa desimal
         document.getElementById("reward").innerText = Math.floor(sol);
-        
+
         // Hitung estimasi per jam
-        const stakerData = await contract.stakers(account);
-        const ethStaked = parseFloat(ethers.formatEther(stakerData[0]));
-        const usdcStaked = parseFloat(ethers.formatUnits(stakerData[1], 6));
-        const ethRewardPerHour = ethStaked * 2.85; // sesuai rewardRate
-        const usdcRewardPerHour = (usdcStaked / 2983) * 2.85;
+        const ethRewardPerHour = stakerData.ethStaked * 2.85; // sesuai rewardRate
+        const usdcRewardPerHour = (stakerData.usdcStaked / 2983) * 2.85;
         const totalHourly = Math.floor(ethRewardPerHour + usdcRewardPerHour);
         document.getElementById("hourlyReward").innerText = totalHourly + " SOL";
       } catch (e) { }
@@ -290,7 +318,7 @@
       }
     }
 
-    // Fungsi interaksi (sama seperti sebelumnya)
+    // Fungsi interaksi
     async function stakeETH() {
       const amount = document.getElementById("ethAmount").value;
       if (!amount || parseFloat(amount) <= 0 || parseFloat(amount) > ethBalance) {
