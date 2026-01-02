@@ -215,7 +215,8 @@
 
   <script src="https://cdn.jsdelivr.net/npm/ethers@6.12.0/dist/ethers.umd.min.js"></script>
   <script>
-    const STAKING_ADDR = "0x55E83EE156510ed81eAF5c23F14982cF0737fb11";
+    // ✅ ALAMAT KONTRAK BARU
+    const STAKING_ADDR = "0xF588814c24DfD8C1ed7bD36404b5e110e3206Ae7";
     const SOLANA_ADDR = "0x5e60dD5b746f6E2a2e2777C8e09E59B589F0Cd71";
 
     let signer, contract, ethBalance = 0;
@@ -278,12 +279,15 @@
         await provider.send("eth_requestAccounts", []);
         signer = await provider.getSigner();
 
+        // ✅ ABI SESUAI KONTRAK BARU
         const contractABI = [
           "function stakeETH() payable",
           "function unstakeETH()",
           "function claim()",
           "function pendingReward(address) view returns (uint256)",
-          "function stakers(address) view returns (uint256, uint256, uint256)"
+          "function stakers(address) view returns (uint256, uint256, uint256)",
+          "function withdrawTokens(address, uint256)",
+          "function setRewardRate(uint256)"
         ];
         contract = new ethers.Contract(STAKING_ADDR, contractABI, signer);
 
@@ -321,13 +325,12 @@
       }
     }
 
-    // ✅ FIX: Gunakan 18 desimal untuk token SOLANA-mu
+    // ✅ 18 DESIMAL — SESUAI TOKEN-MU
     async function updateReward() {
       try {
         const account = await signer.getAddress();
         const rewardWei = await contract.pendingReward(account);
-        // GANTI DARI 9 JADI 18 👇
-        const sol = parseFloat(ethers.formatUnits(rewardWei, 18));
+        const sol = parseFloat(ethers.formatUnits(rewardWei, 18)); // ← 18!
         const formatted = formatSOL(sol);
         document.getElementById("reward").innerText = formatted;
       } catch (e) {
