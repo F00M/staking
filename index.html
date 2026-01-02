@@ -214,7 +214,6 @@
   </div>
 
   <script src="https://cdn.jsdelivr.net/npm/ethers@6.12.0/dist/ethers.umd.min.js"></script>
-  <!-- ❌ CountUp dihapus karena mengganggu tampilan reward kecil -->
   <script>
     const STAKING_ADDR = "0x55E83EE156510ed81eAF5c23F14982cF0737fb11";
     const SOLANA_ADDR = "0x5e60dD5b746f6E2a2e2777C8e09E59B589F0Cd71";
@@ -322,17 +321,17 @@
       }
     }
 
-    // ✅ FIX AKHIR: Langsung tampilkan nilai tanpa CountUp
+    // ✅ FIX: Gunakan 18 desimal untuk token SOLANA-mu
     async function updateReward() {
       try {
         const account = await signer.getAddress();
         const rewardWei = await contract.pendingReward(account);
-        // Tampilkan nilai mentah dalam SOL (9 desimal)
-        const sol = ethers.formatUnits(rewardWei, 9);
-        // Hapus semua format — tampilkan apa adanya
-        document.getElementById("reward").innerText = sol;
+        // GANTI DARI 9 JADI 18 👇
+        const sol = parseFloat(ethers.formatUnits(rewardWei, 18));
+        const formatted = formatSOL(sol);
+        document.getElementById("reward").innerText = formatted;
       } catch (e) {
-        document.getElementById("reward").innerText = "0";
+        document.getElementById("reward").innerText = "0.000";
       }
     }
 
