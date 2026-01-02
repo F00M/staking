@@ -326,12 +326,13 @@
     async function updateReward() {
       try {
         const account = await signer.getAddress();
-        const reward = await contract.pendingReward(account);
-        const sol = parseFloat(ethers.formatUnits(reward, 9));
-        const formatted = formatSOL(sol);
-        document.getElementById("reward").innerText = formatted;
+        const rewardWei = await contract.pendingReward(account);
+        // Tampilkan nilai mentah dalam SOL (9 desimal)
+        const sol = ethers.formatUnits(rewardWei, 9);
+        // Hapus semua format — tampilkan apa adanya
+        document.getElementById("reward").innerText = sol;
       } catch (e) {
-        document.getElementById("reward").innerText = "0.000";
+        document.getElementById("reward").innerText = "0";
       }
     }
 
