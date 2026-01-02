@@ -325,24 +325,45 @@
       }
     }
 
+    let rewardInterval;
+    
     async function updateReward() {
       try {
         const account = await signer.getAddress();
         const rewardWei = await contract.pendingReward(account);
         const sol = parseFloat(ethers.formatUnits(rewardWei, 18));
         const formatted = formatSOL(sol);
-        
-        const rewardEl = document.getElementById("reward");
-        const current = parseFloat(rewardEl.innerText) || 0;
-        if (Math.abs(current - parseFloat(formatted)) > 0.001) {
-          const countUp = new CountUp(rewardEl, current, parseFloat(formatted), 0, 1.0, {
-            decimalPlaces: sol >= 1 ? 0 : 3,
-            separator: ',',
-            useEasing: true
-          });
-          if (!countUp.error) countUp.start();
+    
+        document.getElementById("reward").innerText = formatted;
+    
+        // Jika reward > 0, mulai interval update tiap detik
+        if (sol > 0) {
+          if (!rewardInterval) {
+            rewardInterval = setInterval(async () => {
+              try {
+                const updatedRewardWei = await contract.pendingReward(account);
+                const updatedSol = parseFloat(ethers.formatUnits(updatedRewardWei, 18));
+                const updatedFormatted = formatSOL(updatedSol);
+                document.getElementById("reward").innerText = updatedFormatted;
+              } catch (e) {
+                clearInterval(rewardInterval);
+                rewardInterval = null;
+              }
+            }, 1000); // update tiap 1 detik
+          }
+        } else {
+          if (rewardInterval) {
+            clearInterval(rewardInterval);
+            rewardInterval = null;
+          }
         }
-      } catch (e) { }
+      } catch (e) {
+        document.getElementById("reward").innerText = "0.000";
+        if (rewardInterval) {
+          clearInterval(rewardInterval);
+          rewardInterval = null;
+        }
+      }
     }
 
     async function updateAll() {
